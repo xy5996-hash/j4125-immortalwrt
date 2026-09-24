@@ -148,7 +148,8 @@ def render(data: dict[str, Any], source_path: Path) -> str:
     if overlap:
         raise ConfigError(f"expanded feature packages overlap exclusions: {overlap}")
 
-    yaml_digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    yaml_text = source_path.read_text(encoding="utf-8").replace("\\r\\n", "\\n")
+    yaml_digest = hashlib.sha256(yaml_text.encode("utf-8")).hexdigest()
     base = require_mapping(data, "base")
     components = require_mapping(data, "components")
     mihomo = require_mapping(components, "mihomo")
