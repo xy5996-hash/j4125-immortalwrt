@@ -3,6 +3,7 @@
 - Audit date: 2026-09-24
 - Repository: `xy5996-hash/j4125-immortalwrt`
 - Audit baseline: `main` at `03d148c993611ed6bf6a9199eaa48a98905e7fde`
+- Audit publication commit: `32fb25c1eea285d04fd4ae5236d170b65daad85e`
 - Existing source pre-release: `v25.12.2-r0-phase1`
 - Scope: configuration, renderer, feeds, local overlay, package placeholder, validation scripts, GitHub Actions
 - Phase A rule: this file is the only repository change in this phase. No build implementation is included yet.
@@ -270,6 +271,7 @@ Required Phase B/C work:
 - The current source pre-release has no custom asset; GitHub automatically exposes source archives only.
 - There is no `shellcheck`/`ruff`/`pytest` gate for the scripts.
 - No documented cache-eviction or clean-build retention policy exists.
+- The current pinned Actions emit a Node.js 20 deprecation warning because GitHub forces them onto Node.js 24. They still pass, but should be upgraded intentionally later.
 
 ## 7. Dependency Relationships
 
