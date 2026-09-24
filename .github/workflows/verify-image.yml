@@ -62,6 +62,10 @@ jobs:
           echo "image=$IMAGE"
           echo "manifest=$MANIFEST"
           grep '^libustream' "$MANIFEST" || true
+          gzip -dc "$IMAGE" > "$RUNNER_TEMP/firmware.img"
+          file "$RUNNER_TEMP/firmware.img"
+          sfdisk --json "$RUNNER_TEMP/firmware.img"
+          sgdisk -p "$RUNNER_TEMP/firmware.img"
           python3 scripts/check-image.py \
             --image "$IMAGE" \
             --manifest "$MANIFEST" \
