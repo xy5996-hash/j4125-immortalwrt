@@ -79,9 +79,9 @@ def inspect_partitions(raw_image: Path, boot_mount: Path) -> tuple[bool, bool, b
                 continue
             loops.append(loop)
 
-            fstype = run(["blkid", "-o", "value", "-s", "TYPE", loop], check=False).stdout.strip()
-            squash_check = run(["unsquashfs", "-s", loop], check=False)
-            file_type = run(["file", "-b", "-s", loop], check=False).stdout.strip()
+            fstype = run(["sudo", "blkid", "-o", "value", "-s", "TYPE", loop], check=False).stdout.strip()
+            squash_check = run(["sudo", "unsquashfs", "-s", loop], check=False)
+            file_type = run(["sudo", "file", "-b", "-s", loop], check=False).stdout.strip()
             print(
                 f"partition start={start} size={size} type={partition_type} " 
                 f"loop={loop} fstype={fstype!r} unsquashfs={squash_check.returncode} file={file_type!r}",
