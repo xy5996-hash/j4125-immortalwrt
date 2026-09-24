@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""High-level feature rules used to render the fixed J4125 router profile."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+from config_lib import ConfigReadError
+
+REQUIRED_TRUE_FEATURES = {
+    "ipv4",
+    "ipv6",
+    "vlan",
+    "firewall4",
+    "dnsmasq_full",
+    "uefi",
+    "i226",
+    "intel_ahci",
+    "j4125_gemini_lake",
+    "intel_graphics",
+    "intel_hda",
+    "intel_microcode",
+    "usb_xhci",
+    "istore",
+    "openclash",
+    "setup_wizard",
+    "shortcut_menu",
+}
+
+BASE_PACKAGES = [
+    "base-files",
+    "procd-ujail",
+    "uci",
+    "ubus",
+    "netifd",
+    "fstools",
+    "block-mount",
+    "dropbear",
+    "logd",
+    "ca-bundle",
+    "libustream-openssl",
+    "curl",
+]
+
+FEATURE_PACKAGES: dict[str, list[str]] = {
+    "ipv4": [
+        "dnsmasq-full",
+        "firewall4",
+        "nftables",
+        "kmod-nft-offload",
+        "ppp",
+        "ppp-mod-pppoe",
+        "luci-app-firewall",
+        "luci-app-package-manager",
+        "luci-proto-ppp",
+    ],
+    "ipv6": ["odhcp6c", "odhcpd-ipv6only", "luci-proto-ipv6"],
+    "vlan": ["luci-proto-vlan"],
+    "firewall4": ["firewall4", "nftables", "kmod-nft-offload"],
+    "dnsmasq_full": ["dnsmasq-full"],
+    "i226": ["kmod-igc"],
+    "intel_ahci": [
+        "kmod-fs-vfat",
+        "kmod-fs-f2fs",
+        "mkf2fs",
+        "kmod-nls-cp437",
+        "kmod-nls-iso8859-1",
+        "kmod-nls-utf8",
+    ],
+    "j4125_gemini_lake": [
+        "kmod-i2c-i801",
+        "kmod-hwmon-coretemp",
+        "kmod-intel-lpss",
+        "kmod-intel-lpss-acpi",
+        "kmod-intel-lpss-pci",
+        "kmod-itco-wdt",
+        "kmod-button-hotplug",
+    ],
+    "intel_graphics": ["kmod-drm-i915", "i915-firmware-dmc"],
+    "intel_hda": [
+        "kmod-sound-hda-core",
+        "kmod-sound-hda-intel",
+        "kmod-sound-hda-codec-realtek",
+        "kmod-sound-hda-codec-hdmi",
+        "kmod-sound-hda-codec-analog",
+    ],
+    "intel_microcode": ["intel-microcode"],
+    "usb_xhci": ["kmod-usb-hid"],
+    "diagnostic_tools": ["ethtool", "pciutils"],
+    "istore": [
+        "luci-app-store",
+        "luci-lib-taskd",
+        "taskd",
+        "luci-lib-xterm",
+        "tar",
+        "libuci-lua",
+        "mount-utils",
+    ],
+    "openclash": [
+        "luci-app-openclash",
+        "luci-compat",
+        "bash",
+        "ip-full",
+        "ruby",
+        "ruby-yaml",
+        "kmod-tun",
+        "kmod-inet-diag",
+        "kmod-nft-tproxy",
+        "unzip",
+    ],
+    "setup_wizard": ["luci-app-netwizard", "luci-i18n-netwizard-zh-cn", "luci-compat"],
+    "shortcut_menu": ["bash"],
+}
+
+BASE_KCONFIG: dict[str, str] = {
+    "CONFIG_64BIT": "y",
+    "CONFIG_X86_64": "y",
+    "CONFIG_SMP": "y",
+    "CONFIG_ACPI": "y",
+    "CONFIG_PCI": "y",
+    "CONFIG_PCIEPORTBUS": "y",
+    "CONFIG_PCI_MSI": "y",
+    "CONFIG_PCIEASPM": "y",
+    "CONFIG_PCI_MMCONFIG": "y",
+    "CONFIG_BLK_DEV_SD": "y",
+    "CONFIG_BLK_DEV_LOOP": "y",
+    "CONFIG_ATA": "y",
+    "CONFIG_ATA_GENERIC": "y",
+    "CONFIG_ATA_PIIX": "y",
+    "CONFIG_SATA_AHCI": "y",
+    "CONFIG_SQUASHFS": "y",
+    "CONFIG_OVERLAY_FS": "y",
+    "CONFIG_EXT4_FS": "y",
+    "CONFIG_F2FS_FS": "y",
+    "CONFIG_MSDOS_FS": "y",
+    "CONFIG_VFAT_FS": "m",
+    "CONFIG_NLS_CODEPAGE_437": "m",
+    "CONFIG_NLS_ISO8859_1": "m",
+    "CONFIG_NLS_UTF8": "m",
+    "CONFIG_BRIDGE": "y",
+}
+
+FEATURE_KCONFIG: dict[str, dict[str, str]] = {
+    "ipv6": {"CONFIG_IPV6": "y"},
+    "vlan": {"CONFIG_VLAN_8021Q": "y"},
+    "uefi": {
+        "CONFIG_EFI": "y",
+        "CONFIG_EFI_STUB": "y",
+        "CONFIG_EFI_PARTITION": "y",
+    },
+    "j4125_gemini_lake": {
+        "CONFIG_PINCTRL": "y",
+        "CONFIG_PINCTRL_GEMINILAKE": "y",
+        "CONFIG_GPIO_CDEV": "y",
+        "CONFIG_I2C": "y",
+        "CONFIG_SENSORS_CORETEMP": "y",
+        "CONFIG_THERMAL": "y",
+        "CONFIG_X86_PKG_TEMP_THERMAL": "y",
+        "CONFIG_CPU_FREQ": "y",
+        "CONFIG_X86_ACPI_CPUFREQ": "y",
+        "CONFIG_X86_INTEL_PSTATE": "y",
+    },
+    "intel_microcode": {
+        "CONFIG_MICROCODE": "y",
+        "CONFIG_MICROCODE_LATE_LOADING": "y",
+    },
+    "intel_graphics": {
+        "CONFIG_DRM": "y",
+        "CONFIG_FB": "y",
+        "CONFIG_FB_EFI": "y",
+    },
+    "usb_xhci": {
+        "CONFIG_USB_SUPPORT": "y",
+        "CONFIG_USB_XHCI_HCD": "y",
+        "CONFIG_USB_XHCI_PCI": "y",
+    },
+}
+
+FORBIDDEN_MANIFEST_PATTERNS = [
+    r"^docker",
+    r"^dockerd$",
+    r"^containerd",
+    r"^runc$",
+    r"^samba",
+    r"^ksmbd",
+    r"^smbd$",
+    r"^nfs-kernel-server$",
+    r"^jellyfin",
+    r"^plex",
+    r"^transmission",
+    r"^aria2",
+    r"^qbittorrent",
+    r"^minidlna",
+]
+
+FORBIDDEN_DRIVER_PATTERNS = [
+    r"^wpad",
+    r"^hostapd",
+    r"^kmod-ath",
+    r"^kmod-cfg80211$",
+    r"^kmod-mac80211$",
+    r"^kmod-iwl",
+    r"^kmod-mt76",
+    r"^kmod-rtw",
+    r"^kmod-brcm",
+    r"^kmod-bluetooth$",
+    r"^bluez",
+    r"^kmod-r81",
+    r"^kmod-e1000",
+    r"^kmod-igb",
+    r"^kmod-i40e",
+    r"^kmod-ixgbe",
+    r"^kmod-pcnet32$",
+    r"^kmod-tulip$",
+    r"^kmod-vmxnet3$",
+    r"^kmod-nvme$",
+    r"^kmod-kvm",
+    r"^kmod-vfio",
+    r"^kmod-vhost",
+    r"^kmod-drm-amdgpu$",
+    r"^kmod-drm-radeon$",
+    r"^kmod-usb-net",
+]
+
+
+def feature_map(data: Mapping[str, Any]) -> dict[str, bool]:
+    raw = data.get("features")
+    if not isinstance(raw, Mapping):
+        raise ConfigReadError("features must be a mapping")
+
+    known = set(FEATURE_PACKAGES) | set(FEATURE_KCONFIG) | {"ipv4", "firewall4", "dnsmasq_full", "intel_ahci"}
+    unknown = sorted(set(raw) - known)
+    if unknown:
+        raise ConfigReadError(f"unknown feature flags: {unknown}")
+
+    result: dict[str, bool] = {}
+    for name, value in raw.items():
+        if not isinstance(value, bool):
+            raise ConfigReadError(f"feature {name!r} must be true or false")
+        result[str(name)] = value
+
+    missing_required = sorted(name for name in REQUIRED_TRUE_FEATURES if not result.get(name))
+    if missing_required:
+        raise ConfigReadError(f"profile-critical features must be enabled: {missing_required}")
+    return result
+
+
+def expand_feature_packages(data: Mapping[str, Any]) -> list[str]:
+    enabled = feature_map(data)
+    packages = list(BASE_PACKAGES)
+    for feature, values in FEATURE_PACKAGES.items():
+        if enabled.get(feature):
+            packages.extend(values)
+    return unique(packages)
+
+
+def expand_feature_kconfig(data: Mapping[str, Any]) -> dict[str, str]:
+    enabled = feature_map(data)
+    symbols = dict(BASE_KCONFIG)
+    for feature, values in FEATURE_KCONFIG.items():
+        if enabled.get(feature):
+            symbols.update(values)
+    return symbols
+
+
+def unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            result.append(value)
+    return result
+

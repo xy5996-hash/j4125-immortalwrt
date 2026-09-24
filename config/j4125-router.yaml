@@ -1,0 +1,188 @@
+schema_version: 1
+
+base:
+  project: ImmortalWrt
+  repository: https://github.com/immortalwrt/immortalwrt.git
+  ref: v25.12.2
+  commit: 4fc16f2985a358bd43bb522e43f05395fcbd6ed5
+  tracking_branch: openwrt-25.12
+  kernel_series: "6.12"
+  package_manager: apk
+
+target:
+  target: x86
+  subtarget: "64"
+  profile: generic
+
+image:
+  filesystem: squashfs
+  format: combined-efi
+  gzip: true
+  kernel_partition_mib: 32
+  rootfs_partition_mib: 512
+
+hardware:
+  profile: cnction-j4125-4l
+  cpu: Intel Celeron J4125
+  board: CncTion J4125-4L
+  memory_mib: 4096
+  ethernet:
+    controller: Intel Ethernet Controller I226-V
+    pci_id: "8086:125c"
+    driver: igc
+    port_count: 4
+  storage:
+    controller: Intel Gemini Lake SATA AHCI
+    device: BIZKEY SSD 128GB
+    boot_filesystem: vfat
+    root_filesystem: squashfs
+    overlay_filesystem: f2fs
+
+features:
+  ipv4: true
+  ipv6: true
+  vlan: true
+  firewall4: true
+  dnsmasq_full: true
+  uefi: true
+  i226: true
+  intel_ahci: true
+  j4125_gemini_lake: true
+  intel_graphics: true
+  intel_hda: true
+  intel_microcode: true
+  usb_xhci: true
+  diagnostic_tools: true
+  istore: true
+  openclash: true
+  setup_wizard: true
+  shortcut_menu: true
+
+packages:
+  include: []
+  exclude:
+    - dnsmasq
+    - odhcpd
+    - docker
+    - dockerd
+    - containerd
+    - runc
+    - samba
+    - samba4
+    - ksmbd
+    - smbd
+    - nfs-kernel-server
+    - wpad-basic-mbedtls
+    - wpad-openssl
+    - hostapd
+    - kmod-ath
+    - kmod-ath10k
+    - kmod-ath11k
+    - kmod-cfg80211
+    - kmod-mac80211
+    - kmod-iwlwifi
+    - kmod-mt76
+    - kmod-rtw88
+    - kmod-rtw89
+    - kmod-r8169
+    - kmod-r8125
+    - kmod-e1000
+    - kmod-e1000e
+    - kmod-igb
+    - kmod-igbvf
+    - kmod-i40e
+    - kmod-ixgbe
+    - kmod-ixgbevf
+    - kmod-pcnet32
+    - kmod-tulip
+    - kmod-vmxnet3
+    - kmod-nvme
+    - kmod-kvm-intel
+    - kmod-vfio-pci
+    - kmod-vhost
+    - transmission-daemon
+    - qbittorrent
+    - aria2
+    - jellyfin
+    - plexmediaserver
+
+feeds:
+  - name: packages
+    repository: https://github.com/immortalwrt/packages.git
+    commit: 84bd86384928955b568988ca0e09e2c78c75173d
+  - name: luci
+    repository: https://github.com/immortalwrt/luci.git
+    commit: d6167ea0645cbd1327708d85f94824f42d0eb872
+  - name: routing
+    repository: https://github.com/openwrt/routing.git
+    commit: e49d76035aafb85ddc993b59271d8c7ba56b5362
+  - name: telephony
+    repository: https://github.com/openwrt/telephony.git
+    commit: 2618106d5846a4a542fdf5809f0d3ed228ce439b
+  - name: video
+    repository: https://github.com/openwrt/video.git
+    commit: 094bf58da6682f895255a35a84349a79dab4bf95
+  - name: istore
+    repository: https://github.com/linkease/istore.git
+    commit: 3fca15b30aeed9ecacb3efc8b4a8b9c2584ad5c7
+  - name: openclash
+    repository: https://github.com/vernesong/OpenClash.git
+    commit: c3a33c1d3407956fdf8f0e0b7c1a4c52e6ad9593
+  - name: netwizard
+    repository: https://github.com/sirpdboy/luci-app-netwizard.git
+    commit: 7867a28e711269889ca1c999a0ce844c3adb45a0
+
+components:
+  istore:
+    repository: https://github.com/linkease/istore.git
+    commit: 3fca15b30aeed9ecacb3efc8b4a8b9c2584ad5c7
+    package_name: luci-app-store
+    scope: store-ui-only
+  openclash:
+    repository: https://github.com/vernesong/OpenClash.git
+    ref: v0.47.156
+    commit: c3a33c1d3407956fdf8f0e0b7c1a4c52e6ad9593
+    package_name: luci-app-openclash
+  mihomo:
+    repository: https://github.com/MetaCubeX/mihomo.git
+    ref: v1.19.31
+    asset: mihomo-linux-amd64-compatible-v1.19.31.gz
+    sha256: 04cf9f09671704f839ddbee2e93069dc831a4123a75281e725d1d96ab9ac1afc
+    install_path: /etc/openclash/core/clash_meta
+    selection: phase-2-after-local-package-exists
+  setup_wizard:
+    repository: https://github.com/sirpdboy/luci-app-netwizard.git
+    ref: v2.1.5
+    commit: 7867a28e711269889ca1c999a0ce844c3adb45a0
+    packages:
+      - luci-app-netwizard
+      - luci-i18n-netwizard-zh-cn
+  shortcut_menu:
+    source: local-vetted-overlay
+    version: sirpdboy-2025-retained
+    files:
+      - path: files/etc/profiles
+        sha256: d84b4364d44c1717e390fd390c37f5fa11b05b1315a9f261fb9ab33e727721b4
+      - path: files/etc/profile.d/99-ezopwrt-menu.sh
+        sha256: c15d9c747539b28be92045098082d83354f12ae483c535117be26e3ce7a7890b
+output:
+  generated_config: config/generated/immortalwrt-25.12.2-x86_64.config
+  image_prefix: immortalwrt-25.12.2-x86-64-generic
+  image_basename: immortalwrt-25.12.2-x86-64-generic-squashfs-combined-efi.img.gz
+
+security:
+  forbid_subscription_urls: true
+  forbid_private_keys: true
+  forbid_tokens_and_passwords: true
+  forbidden_manifest_packages:
+    - docker
+    - dockerd
+    - containerd
+    - samba
+    - ksmbd
+    - smbd
+    - jellyfin
+    - plex
+    - transmission
+    - aria2
+

@@ -1,0 +1,33 @@
+# Runtime/local secrets and subscriptions
+.env
+.env.*
+secrets/
+config/local/
+subscriptions/
+*.sub
+*.token
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+authorized_keys
+
+# Local OpenWrt build products and source trees
+openwrt/
+build/
+bin/
+dl/
+staging_dir/
+build_dir/
+tmp/
+logs/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
