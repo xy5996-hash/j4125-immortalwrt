@@ -28,6 +28,7 @@ This repository builds a personal ImmortalWrt x86_64 firmware profile for one fi
 - static hardware, forbidden-package, manifest, and secret checks
 - manual defconfig foundation workflow
 - Phase B foundation run verified in GitHub Actions (35978658528)
+- Phase C firmware build verified in GitHub Actions (36018087071)
 
 ## Layout
 
@@ -37,7 +38,7 @@ feeds/                  pinned feeds
 files/                  non-secret runtime overlay
 package/mihomo-core/    pinned mihomo core package
 scripts/                renderer and validation tools
-.github/workflows/      validation and foundation workflows
+.github/workflows/      validation, foundation, build, and artifact-verification workflows
 ```
 
 ## Local validation
@@ -54,4 +55,4 @@ python3 scripts/verify-mihomo-asset.py
 python3 scripts/prepare-build-foundation.py --work-dir /tmp/j4125-foundation
 ```
 
-The foundation workflow does not compile a firmware image or create a GitHub Release.
+The foundation workflow validates configuration only. The manual build workflow compiles and verifies the firmware image, but does not create a GitHub Release.
