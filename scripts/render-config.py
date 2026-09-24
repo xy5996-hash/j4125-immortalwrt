@@ -85,7 +85,7 @@ def validate_source(data: dict[str, Any]) -> None:
 
     components = require_mapping(data, "components")
     mihomo = require_mapping(components, "mihomo")
-    for field in ("repository", "ref", "asset", "sha256", "install_path"):
+    for field in ("repository", "ref", "asset", "source_url", "sha256", "install_path"):
         if not mihomo.get(field):
             raise ConfigError(f"components.mihomo.{field} is required")
     if not SHA256_RE.fullmatch(str(mihomo["sha256"])):
@@ -212,9 +212,9 @@ def render(data: dict[str, Any], source_path: Path) -> str:
             f"# OpenClash ref/commit: {components['openclash']['ref']} {components['openclash']['commit']}",
             f"# mihomo ref/asset: {mihomo['ref']} {mihomo['asset']}",
             f"# mihomo sha256: {mihomo['sha256']}",
+            "# mihomo package: mihomo-core (required)",
             f"# setup wizard ref/commit: {setup_wizard['ref']} {setup_wizard['commit']}",
             f"# shortcut menu version: {shortcut_menu['version']}",
-            "# CONFIG_PACKAGE_mihomo-core is not set  # phase 2 after local package exists",
             "",
         ]
     )

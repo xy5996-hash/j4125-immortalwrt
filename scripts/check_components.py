@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify pinned component versions and local overlay file hashes."""
+"""Verify pinned component versions, local hashes, and the mihomo package definition."""
 
 from __future__ import annotations
 
@@ -21,6 +21,49 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def makefile_value(text: str, name: str) -> str | None:
+    match = re.search(rf"^{re.escape(name)}:=\s*(.+?)\s*$", text, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def verify_mihomo_package(mihomo: dict, errors: list[str]) -> None:
+    makefile_path = REPO_ROOT / "package" / "mihomo-core" / "Makefile"
+    if not makefile_path.is_file():
+        errors.append("package/mihomo-core/Makefile is missing")
+        return
+
+    text = makefile_path.read_text(encoding="utf-8")
+    expected_version = str(mihomo.get("ref", "")).removeprefix("v")
+    expected_asset = str(mihomo.get("asset", ""))
+    expected_hash = str(mihomo.get("sha256", ""))
+    expected_url = str(mihomo.get("source_url", ""))
+    expected_base_url = expected_url.rsplit("/", 1)[0] if "/" in expected_url else ""
+
+    expected_values = {
+        "PKG_NAME": "mihomo-core",
+        "PKG_VERSION": expected_version,
+        "PKG_SOURCE": expected_asset,
+        "PKG_SOURCE_URL": expected_base_url,
+        "PKG_HASH": expected_hash,
+        "PKGARCH": "x86_64",
+    }
+    for name, expected in expected_values.items():
+        actual = makefile_value(text, name)
+        if actual is not None:
+            actual = actual.replace("$(PKG_VERSION)", expected_version)
+        if actual != expected:
+            errors.append(f"{makefile_path}: {name} expected {expected!r}, got {actual!r}")
+
+    install_path = str(mihomo.get("install_path", ""))
+    if install_path not in text:
+        errors.append(f"package Makefile does not install the pinned core to {install_path}")
+
+    if "gzip -dc $(DL_DIR)/$(PKG_SOURCE)" not in text:
+        errors.append("package Makefile does not decompress the pinned PKG_SOURCE")
+    if "$(INSTALL_BIN) $(PKG_BUILD_DIR)/clash_meta $(1)/etc/openclash/core/clash_meta" not in text:
+        errors.append("package Makefile does not install the core as /etc/openclash/core/clash_meta")
 
 
 def main() -> int:
@@ -55,6 +98,8 @@ def main() -> int:
         if not name or not COMMIT_RE.fullmatch(commit):
             errors.append(f"feed is not pinned correctly: {feed!r}")
             continue
+        if name in feed_commits:
+            errors.append(f"duplicate feed name: {name}")
         feed_commits[name] = commit
 
     for component, feed_name in (
@@ -82,6 +127,9 @@ def main() -> int:
             errors.append("components.mihomo.ref should be an explicit version tag")
         if not SHA256_RE.fullmatch(str(mihomo.get("sha256", ""))):
             errors.append("components.mihomo.sha256 is invalid")
+        if str(mihomo.get("selection")) != "required-package":
+            errors.append("components.mihomo.selection must be required-package")
+        verify_mihomo_package(mihomo, errors)
 
     shortcut = components.get("shortcut_menu")
     if not isinstance(shortcut, dict):
@@ -120,7 +168,7 @@ def main() -> int:
             print(f"ERROR: {error}")
         return 1
 
-    print("component check OK: ImmortalWrt, feeds, iStore, OpenClash, mihomo, netwizard, shortcut menu")
+    print("component check OK: feeds, iStore, OpenClash, mihomo package, netwizard, shortcut menu")
     return 0
 
 

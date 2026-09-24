@@ -1,7 +1,21 @@
-# mihomo-core placeholder
+# mihomo-core
 
-The mihomo version and SHA-256 are pinned in `config/j4125-router.yaml`.
+This package installs the pinned mihomo binary as:
 
-The local `mihomo-core` package is intentionally not implemented in phase 1. OpenClash is selected in the generated `.config`; the core package will be added in phase 2, verified, and then selected with `CONFIG_PACKAGE_mihomo-core=y`.
+```text
+/etc/openclash/core/clash_meta
+```
 
-Do not place a downloaded core binary or subscription data in this repository without a reviewed package definition and matching SHA-256.
+Pinned version:
+
+```text
+v1.19.31
+```
+
+Pinned asset:
+
+```text
+mihomo-linux-amd64-compatible-v1.19.31.gz
+```
+
+The source URL and SHA-256 are declared in both `config/j4125-router.yaml` and `package/mihomo-core/Makefile`. The static validator checks that these values stay aligned.

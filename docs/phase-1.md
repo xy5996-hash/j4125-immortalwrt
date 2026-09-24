@@ -1,11 +1,12 @@
 # Phase 1 scope
 
-This phase establishes deterministic configuration and validation only.
+Phase 1 established deterministic configuration and static validation only.
 
-- No ImmortalWrt source clone is performed by CI.
-- No package download or firmware build is performed by CI.
-- No GitHub Release is created.
-- The generated `.config` is checked into source control for auditability.
-- The hardware profile is driven by `features` in `config/j4125-router.yaml`.
-- Detailed OpenWrt kernel and package mappings live in `scripts/profile_rules.py`.
-- The final package manifest check is implemented now and will be connected to the future build workflow.
+- ImmortalWrt source was not cloned by the phase-1 validation workflow.
+- No firmware was built.
+- Generated `.config` was committed for auditability, but it was not a `defconfig` result.
+- Hardware intent came from `features` in `config/j4125-router.yaml`.
+- Detailed OpenWrt mappings lived in `scripts/profile_rules.py`.
+- A source/configuration pre-release exists, but no firmware release exists.
+
+Phase 2 adds the real source/feed preparation, `make defconfig`, dependency checks, and the local `mihomo-core` package.

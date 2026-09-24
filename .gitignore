@@ -31,3 +31,5 @@ logs/
 Thumbs.db
 __pycache__/
 *.pyc
+.foundation-build/
+foundation/

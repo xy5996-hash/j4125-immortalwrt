@@ -97,6 +97,7 @@ FEATURE_PACKAGES: dict[str, list[str]] = {
         "kmod-r8126",
         "kmod-r8168",
         "kmod-r8169",
+        "kmod-vmxnet3",
         "kmod-nvme",
         "kmod-usb-storage",
         "kmod-usb-storage-uas",
@@ -114,7 +115,8 @@ FEATURE_PACKAGES: dict[str, list[str]] = {
         "kmod-usb-serial-pl2303",
         "kmod-hwmon-it87",
         "kmod-hwmon-nct6775",
-    ],    "diagnostic_tools": ["ethtool", "pciutils"],
+    ],
+    "diagnostic_tools": ["ethtool", "pciutils"],
     "istore": [
         "luci-app-store",
         "luci-lib-taskd",
@@ -126,6 +128,7 @@ FEATURE_PACKAGES: dict[str, list[str]] = {
     ],
     "openclash": [
         "luci-app-openclash",
+        "mihomo-core",
         "luci-compat",
         "bash",
         "ip-full",

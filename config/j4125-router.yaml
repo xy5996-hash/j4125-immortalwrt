@@ -19,7 +19,7 @@ image:
   format: combined-efi
   gzip: true
   kernel_partition_mib: 32
-  rootfs_partition_mib: 512
+  rootfs_partition_mib: 1024
 
 hardware:
   profile: cnction-j4125-4l
@@ -90,7 +90,6 @@ packages:
     - kmod-ixgbevf
     - kmod-pcnet32
     - kmod-tulip
-    - kmod-vmxnet3
     - kmod-kvm-intel
     - kmod-vfio-pci
     - kmod-vhost
@@ -143,7 +142,8 @@ components:
     asset: mihomo-linux-amd64-compatible-v1.19.31.gz
     sha256: 04cf9f09671704f839ddbee2e93069dc831a4123a75281e725d1d96ab9ac1afc
     install_path: /etc/openclash/core/clash_meta
-    selection: phase-2-after-local-package-exists
+    source_url: https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-linux-amd64-compatible-v1.19.31.gz
+    selection: required-package
   setup_wizard:
     repository: https://github.com/sirpdboy/luci-app-netwizard.git
     ref: v2.1.5
