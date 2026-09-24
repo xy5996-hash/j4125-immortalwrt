@@ -13,12 +13,7 @@ from typing import Any
 
 import yaml
 
-from profile_rules import (
-    expand_feature_kconfig,
-    expand_feature_packages,
-    feature_map,
-    unique,
-)
+from profile_rules import expand_feature_packages, feature_map, unique
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_YAML = REPO_ROOT / "config" / "j4125-router.yaml"
@@ -118,13 +113,6 @@ def validate_packages(packages: dict[str, Any]) -> tuple[list[str], list[str]]:
     return include, exclude
 
 
-def append_kconfig(lines: list[str], symbol: str, value: str) -> None:
-    if value == "n":
-        lines.append(f"# {symbol} is not set")
-    else:
-        lines.append(f"{symbol}={value}")
-
-
 def render(data: dict[str, Any], source_path: Path) -> str:
     validate_source(data)
     features = feature_map(data)
@@ -190,11 +178,7 @@ def render(data: dict[str, Any], source_path: Path) -> str:
         "CONFIG_CCACHE=y",
         "CONFIG_REPRODUCIBLE_DEBUG_INFO=y",
         "",
-        "# Kernel requirements derived from enabled hardware features",
     ]
-
-    for symbol, value in expand_feature_kconfig(data).items():
-        append_kconfig(lines, symbol, value)
 
     lines.extend(["", "# Selected firmware packages"])
     for package in packages:

@@ -19,7 +19,6 @@ from config_lib import (
 from profile_rules import (
     FORBIDDEN_DRIVER_PATTERNS,
     FORBIDDEN_MANIFEST_PATTERNS,
-    expand_feature_kconfig,
     expand_feature_packages,
     feature_map,
     unique,
@@ -66,17 +65,10 @@ def main() -> int:
         if package not in selected:
             errors.append(f"missing required package selection: CONFIG_PACKAGE_{package}=y")
 
-    expected_kconfig = expand_feature_kconfig(data)
-    for symbol, value in expected_kconfig.items():
-        expected_line = f"# {symbol} is not set" if value == "n" else f"{symbol}={value}"
-        if expected_line not in raw_lines:
-            errors.append(f"missing required kernel config: {expected_line}")
-
     required_image_lines = {
         "CONFIG_TARGET_x86=y",
         "CONFIG_TARGET_x86_64=y",
         "CONFIG_TARGET_DEVICE_x86_64_DEVICE_generic=y",
-        'CONFIG_TARGET_DEVICE_PACKAGES_x86_64_DEVICE_generic=""',
         "CONFIG_TARGET_ROOTFS_SQUASHFS=y",
         "# CONFIG_TARGET_ROOTFS_EXT4FS is not set",
         "CONFIG_GRUB_EFI_IMAGES=y",

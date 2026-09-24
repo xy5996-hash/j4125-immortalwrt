@@ -49,7 +49,7 @@ features:
   intel_ahci: true
   j4125_gemini_lake: true
   intel_graphics: true
-  intel_hda: true
+  intel_hda: false  # deferred: official x86 target does not expose HDA kmods
   intel_microcode: true
   usb_xhci: true
   broad_compat: true
@@ -85,6 +85,8 @@ packages:
     - kmod-mt76
     - kmod-rtw88
     - kmod-rtw89
+    - kmod-8139cp
+    - kmod-8139too
     - kmod-i40e
     - kmod-ixgbe
     - kmod-ixgbevf

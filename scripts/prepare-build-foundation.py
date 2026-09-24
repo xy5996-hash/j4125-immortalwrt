@@ -126,6 +126,18 @@ def main() -> int:
 
     try:
         prepare_source(base, source_dir, logs_dir)
+        run_logged(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "check_kernel_profile.py"),
+                "--source-dir",
+                str(source_dir),
+                "--config",
+                str(args.config.resolve()),
+            ],
+            REPO_ROOT,
+            logs_dir / "kernel-profile.log",
+        )
         copy_project_inputs(source_dir)
 
         run_logged(["./scripts/feeds", "update", "-a"], source_dir, logs_dir / "feeds-update.log")
