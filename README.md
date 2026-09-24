@@ -26,7 +26,8 @@ This repository builds a personal ImmortalWrt x86_64 firmware profile for one fi
 - setup wizard `luci-app-netwizard`
 - reviewed console shortcut menu
 - static hardware, forbidden-package, manifest, and secret checks
-- manual `defconfig` foundation workflow
+- manual defconfig foundation workflow
+- Phase B foundation run verified in GitHub Actions (35978658528)
 
 ## Layout
 

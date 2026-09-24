@@ -467,3 +467,50 @@ clean checkout
 -> QEMU smoke
 -> physical J4125-4L
 ```
+## Phase B Implementation Status
+
+Phase B was implemented after this audit and verified in a clean GitHub Actions environment.
+
+Completed:
+
+- `mihomo-core` package implemented with pinned URL and SHA256
+- `mihomo-core` selected in the generated `.config`
+- `kmod-vmxnet3` restored for VM compatibility
+- kernel hardware expectations moved out of `.config` and validated against pinned target config fragments
+- invalid `nftables` and `luci-proto-vlan` package assumptions removed
+- iStore dependency chain corrected, including GNU `tar`
+- 1024 MiB rootfs partition selected
+- manual `foundation.yml` workflow added
+- real mihomo asset downloaded and verified as an ELF archive with SHA256 `04cf9f09671704f839ddbee2e93069dc831a4123a75281e725d1d96ab9ac1afc`
+- clean ImmortalWrt source checkout and pinned feeds applied
+- `make defconfig` completed successfully
+
+Verification evidence:
+
+```text
+GitHub Actions run: 35978658528
+config.before-defconfig SHA256: 5d46d6e89ed4b002ead6c22e8d2688b0ceaf3af6dba6bd0400178c0a9bf81289
+config.after-defconfig SHA256: afec626b0ab3a647741c5532448b97904f4e6ee484e6871642063050fd6190ae
+defconfig diff lines: 8215 (reported for review)
+```
+
+Final required selections confirmed after defconfig:
+
+```text
+CONFIG_TARGET_ROOTFS_PARTSIZE=1024
+CONFIG_PACKAGE_kmod-igc=y
+CONFIG_PACKAGE_kmod-vmxnet3=y
+CONFIG_PACKAGE_nftables-json=y
+CONFIG_PACKAGE_luci-app-store=y
+CONFIG_PACKAGE_tar=y
+CONFIG_PACKAGE_mihomo-core=y
+```
+
+Not yet performed in Phase B:
+
+- firmware compilation
+- final package manifest generation
+- image sanity validation
+- QEMU/UEFI smoke test
+- physical J4125-4L validation
+- firmware Release
