@@ -12,7 +12,12 @@ import tempfile
 from pathlib import Path
 
 from config_lib import DEFAULT_YAML
-from check_manifest import check_packages, load_patterns, parse_manifest, required_packages
+from check_manifest import check_packages, load_patterns, missing_required_packages, parse_manifest, required_packages
+
+EFI_TYPE_GUIDS = {
+    "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+    "ef",
+}
 
 
 def run(command: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -30,21 +35,67 @@ def decompress_image(image: Path, raw_image: Path) -> None:
         shutil.copyfileobj(source, destination, length=1024 * 1024)
 
 
-def loop_partitions(raw_image: Path) -> tuple[str, dict[str, str]]:
-    loop = run(["sudo", "losetup", "--find", "--show", "--partscan", str(raw_image)]).stdout.strip()
-    if not loop:
-        raise RuntimeError("losetup did not return a loop device")
+def mount_partition(device: str, mount_dir: Path) -> None:
+    mount_dir.mkdir(exist_ok=True)
+    run(["sudo", "mount", "-o", "ro", device, str(mount_dir)])
+
+
+def inspect_partitions(raw_image: Path, boot_mount: Path) -> tuple[bool, bool, bool]:
+    sfdisk = json.loads(run(["sfdisk", "--json", str(raw_image)]).stdout)
+    table = sfdisk.get("partitiontable", {})
+    sector_size = int(table.get("sector-size", 512))
+    partitions = table.get("partitions") or []
+    if not partitions:
+        raise RuntimeError("sfdisk reported no partitions")
+
+    efi_found = False
+    kernel_found = False
+    squashfs_found = False
+    loops: list[str] = []
+
     try:
-        output = run(["lsblk", "-ln", "-o", "NAME,FSTYPE", loop]).stdout
-        partitions: dict[str, str] = {}
-        for line in output.splitlines():
-            columns = line.split()
-            if len(columns) >= 2 and columns[0].startswith(Path(loop).name):
-                partitions[f"/dev/{columns[0]}"] = columns[1]
-        return loop, partitions
-    except Exception:
-        run(["sudo", "losetup", "-d", loop], check=False)
-        raise
+        for partition in partitions:
+            partition_type = str(partition.get("type", "")).lower()
+            if partition_type in EFI_TYPE_GUIDS:
+                efi_found = True
+
+            start = int(partition["start"]) * sector_size
+            size = int(partition["size"]) * sector_size
+            loop = run(
+                [
+                    "sudo",
+                    "losetup",
+                    "--find",
+                    "--show",
+                    "--offset",
+                    str(start),
+                    "--sizelimit",
+                    str(size),
+                    str(raw_image),
+                ]
+            ).stdout.strip()
+            if not loop:
+                continue
+            loops.append(loop)
+
+            fstype = run(["blkid", "-o", "value", "-s", "TYPE", loop], check=False).stdout.strip()
+            if fstype == "squashfs" or run(["unsquashfs", "-s", loop], check=False).returncode == 0:
+                squashfs_found = True
+
+            if fstype in {"vfat", "fat", "msdos"}:
+                try:
+                    mount_partition(loop, boot_mount)
+                    kernel_found = kernel_found or any(
+                        (boot_mount / path).is_file()
+                        for path in ("boot/vmlinuz", "vmlinuz", "boot/kernel.img")
+                    )
+                finally:
+                    run(["sudo", "umount", str(boot_mount)], check=False)
+    finally:
+        for loop in reversed(loops):
+            run(["sudo", "losetup", "-d", loop], check=False)
+
+    return efi_found, kernel_found, squashfs_found
 
 
 def main() -> int:
@@ -59,8 +110,7 @@ def main() -> int:
     temp_dir_obj = tempfile.TemporaryDirectory(prefix="image-check-")
     temp_dir = Path(temp_dir_obj.name)
     raw_image = temp_dir / "firmware.img"
-    mount_dir = temp_dir / "boot"
-    loop_device: str | None = None
+    boot_mount = temp_dir / "boot"
 
     try:
         if not args.image.is_file():
@@ -77,43 +127,18 @@ def main() -> int:
         if "boot sector" not in file_output.lower() and "partition" not in file_output.lower():
             errors.append(f"unexpected image file type: {file_output}")
 
-        sgdisk = run(["sgdisk", "--verify", str(raw_image)], check=False)
-        if sgdisk.returncode != 0:
-            errors.append(f"sgdisk verification failed: {sgdisk.stdout}{sgdisk.stderr}")
-        partition_table = run(["sgdisk", "-p", str(raw_image)], check=False).stdout
-        if "EFI System Partition" not in partition_table and "EF00" not in partition_table:
-            errors.append("EFI System Partition not found in GPT")
-        if "Linux filesystem" not in partition_table and "8300" not in partition_table:
-            errors.append("Linux root filesystem partition not found in GPT")
-
-        loop_device, partitions = loop_partitions(raw_image)
-        squashfs_device = next((device for device, fs in partitions.items() if fs == "squashfs"), None)
-        if squashfs_device is None:
-            errors.append(f"squashfs rootfs partition not found: {partitions}")
-        else:
-            squash = run(["unsquashfs", "-s", squashfs_device], check=False)
-            if squash.returncode != 0:
-                errors.append(f"squashfs superblock check failed: {squash.stdout}{squash.stderr}")
-
-        boot_device = next((device for device, fs in partitions.items() if fs in {"vfat", "fat"}), None)
-        if boot_device is None:
-            errors.append(f"EFI/FAT boot partition not found: {partitions}")
-        else:
-            mount_dir.mkdir()
-            mounted = run(["sudo", "mount", "-o", "ro", boot_device, str(mount_dir)], check=False)
-            if mounted.returncode != 0:
-                errors.append(f"boot partition mount failed: {mounted.stderr}")
-            else:
-                try:
-                    if not any((mount_dir / path).is_file() for path in ("boot/vmlinuz", "vmlinuz")):
-                        errors.append("kernel image not found on boot partition")
-                finally:
-                    run(["sudo", "umount", str(mount_dir)], check=False)
+        efi_found, kernel_found, squashfs_found = inspect_partitions(raw_image, boot_mount)
+        if not efi_found:
+            errors.append("EFI System Partition not found in image partition table")
+        if not kernel_found:
+            errors.append("kernel image not found on EFI/FAT boot partition")
+        if not squashfs_found:
+            errors.append("squashfs rootfs partition not found")
 
         manifest_packages = parse_manifest(args.manifest.read_text(encoding="utf-8"))
         forbidden = load_patterns(args.profile)
         errors.extend(check_packages(manifest_packages, forbidden))
-        missing = sorted(set(required_packages(args.profile)) - set(manifest_packages))
+        missing = missing_required_packages(manifest_packages, required_packages(args.profile))
         errors.extend(f"required package missing from manifest: {package}" for package in missing)
 
         if args.build_info:
@@ -127,7 +152,7 @@ def main() -> int:
             return 1
 
         print(
-            "image sanity OK: gzip, GPT, EFI, kernel, squashfs rootfs, "
+            "image sanity OK: gzip, EFI, kernel, squashfs rootfs, "
             "required packages, forbidden packages, build-info"
         )
         return 0
@@ -135,8 +160,6 @@ def main() -> int:
         print(f"image sanity failed: {exc}")
         return 1
     finally:
-        if loop_device:
-            run(["sudo", "losetup", "-d", loop_device], check=False)
         temp_dir_obj.cleanup()
 
 

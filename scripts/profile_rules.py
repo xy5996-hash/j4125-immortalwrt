@@ -30,6 +30,7 @@ REQUIRED_TRUE_FEATURES = {
 
 BASE_PACKAGES = [
     "base-files",
+    "apk-openssl",
     "procd-ujail",
     "uci",
     "ubus",

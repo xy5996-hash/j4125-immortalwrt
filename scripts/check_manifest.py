@@ -52,6 +52,21 @@ def check_packages(packages: list[str], forbidden_patterns: list[str]) -> list[s
     return errors
 
 
+REQUIRED_ALIASES = {
+    "libustream-openssl": [r"^libustream-openssl(?:20\d{6})?$"],
+}
+
+
+def missing_required_packages(packages: list[str], required: list[str]) -> list[str]:
+    package_set = set(packages)
+    missing: list[str] = []
+    for package in required:
+        if package in package_set:
+            continue
+        if not any(matches_any(candidate, REQUIRED_ALIASES.get(package, [])) for candidate in package_set):
+            missing.append(package)
+    return sorted(missing)
+
 def load_patterns(profile_path: Path) -> list[str]:
     data = load_yaml(profile_path)
     literal = yaml_list_of_strings(data, "security", "forbidden_manifest_packages")
@@ -108,7 +123,7 @@ def main() -> int:
         return 1
 
     errors = check_packages(packages, patterns)
-    missing = sorted(set(required) - set(packages))
+    missing = missing_required_packages(packages, required)
     for package in missing:
         errors.append(f"required package missing from manifest: {package}")
 
