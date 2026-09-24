@@ -52,6 +52,7 @@ features:
   intel_hda: true
   intel_microcode: true
   usb_xhci: true
+  broad_compat: true
   diagnostic_tools: true
   istore: true
   openclash: true
@@ -84,19 +85,12 @@ packages:
     - kmod-mt76
     - kmod-rtw88
     - kmod-rtw89
-    - kmod-r8169
-    - kmod-r8125
-    - kmod-e1000
-    - kmod-e1000e
-    - kmod-igb
-    - kmod-igbvf
     - kmod-i40e
     - kmod-ixgbe
     - kmod-ixgbevf
     - kmod-pcnet32
     - kmod-tulip
     - kmod-vmxnet3
-    - kmod-nvme
     - kmod-kvm-intel
     - kmod-vfio-pci
     - kmod-vhost

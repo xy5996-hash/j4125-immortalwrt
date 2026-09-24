@@ -8,6 +8,7 @@ This repository builds a deliberately small ImmortalWrt x86_64 firmware profile 
 - 4x Intel I226-V using the `igc` driver
 - bare-metal UEFI only
 - squashfs combined EFI image
+- common x86 hardware compatibility retained without including obscure legacy drivers
 
 ## Phase 1
 

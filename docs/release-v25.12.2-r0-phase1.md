@@ -10,6 +10,7 @@ This is a **source and configuration pre-release**. It does not contain a firmwa
 - pinned ImmortalWrt feeds, iStore, OpenClash, mihomo, and setup wizard
 - `feeds.conf.lock`
 - J4125/I226 hardware profile checks
+- common x86 compatibility set: Intel/Realtek wired NICs, NVMe, USB storage/network/serial, common hardware sensors
 - expanded forbidden-package checks
 - secret scanning
 - GitHub Actions validation workflow
