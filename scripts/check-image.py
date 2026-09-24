@@ -17,6 +17,7 @@ from check_manifest import check_packages, load_patterns, missing_required_packa
 EFI_TYPE_GUIDS = {
     "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
     "ef",
+    "0xef",
 }
 
 
@@ -79,15 +80,24 @@ def inspect_partitions(raw_image: Path, boot_mount: Path) -> tuple[bool, bool, b
             loops.append(loop)
 
             fstype = run(["blkid", "-o", "value", "-s", "TYPE", loop], check=False).stdout.strip()
-            if fstype == "squashfs" or run(["unsquashfs", "-s", loop], check=False).returncode == 0:
+            squash_check = run(["unsquashfs", "-s", loop], check=False)
+            file_type = run(["file", "-b", "-s", loop], check=False).stdout.strip()
+            print(
+                f"partition start={start} size={size} type={partition_type} " 
+                f"loop={loop} fstype={fstype!r} unsquashfs={squash_check.returncode} file={file_type!r}",
+                flush=True,
+            )
+            if fstype == "squashfs" or squash_check.returncode == 0:
                 squashfs_found = True
 
             if fstype in {"vfat", "fat", "msdos"}:
                 try:
                     mount_partition(loop, boot_mount)
                     kernel_found = kernel_found or any(
-                        (boot_mount / path).is_file()
-                        for path in ("boot/vmlinuz", "vmlinuz", "boot/kernel.img")
+                        path.is_file() for path in boot_mount.rglob("vmlinuz")
+                    )
+                    efi_found = efi_found or any(
+                        path.name.lower() == "bootx64.efi" for path in boot_mount.rglob("*")
                     )
                 finally:
                     run(["sudo", "umount", str(boot_mount)], check=False)
