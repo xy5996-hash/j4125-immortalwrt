@@ -121,7 +121,6 @@ FEATURE_PACKAGES: dict[str, list[str]] = {
         "libacl",
         "libattr",
         "libzstd",
-        "xz",
         "libuci-lua",
         "mount-utils",
     ],
@@ -140,6 +139,12 @@ FEATURE_PACKAGES: dict[str, list[str]] = {
     ],
     "setup_wizard": ["luci-app-netwizard", "luci-i18n-netwizard-zh-cn", "luci-compat"],
     "shortcut_menu": ["bash"],
+}
+
+FEATURE_CONFIG: dict[str, dict[str, str]] = {
+    "istore": {
+        "CONFIG_PACKAGE_TAR_XZ": "n",
+    },
 }
 
 # These symbols live in target kernel config fragments, not in .config.
@@ -291,6 +296,15 @@ def expand_feature_packages(data: Mapping[str, Any]) -> list[str]:
         if enabled.get(feature):
             packages.extend(values)
     return unique(packages)
+
+
+def expand_feature_config(data: Mapping[str, Any]) -> dict[str, str]:
+    enabled = feature_map(data)
+    symbols: dict[str, str] = {}
+    for feature, values in FEATURE_CONFIG.items():
+        if enabled.get(feature):
+            symbols.update(values)
+    return symbols
 
 
 def expand_kernel_expectations(data: Mapping[str, Any]) -> dict[str, str]:

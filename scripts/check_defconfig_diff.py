@@ -8,7 +8,7 @@ import difflib
 from pathlib import Path
 
 from config_lib import DEFAULT_YAML, ConfigReadError, load_yaml, read_config
-from profile_rules import expand_feature_packages, feature_map, unique
+from profile_rules import expand_feature_config, expand_feature_packages, feature_map, unique
 
 
 def selected_lines(path: Path) -> set[str]:
@@ -64,6 +64,11 @@ def main() -> int:
         print(f"- ... {len(removed) - 40} more")
 
     errors: list[str] = []
+    for symbol, value in expand_feature_config(data).items():
+        expected = f"# {symbol} is not set" if value == "n" else f"{symbol}={value}"
+        if expected not in after_lines:
+            errors.append(f"required feature config missing after defconfig: {expected}")
+
     required_packages = unique(expand_feature_packages(data))
     missing = sorted(set(required_packages) - selected_after)
     for package in missing:
