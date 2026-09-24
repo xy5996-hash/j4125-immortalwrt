@@ -66,6 +66,12 @@ jobs:
           file "$RUNNER_TEMP/firmware.img"
           sfdisk --json "$RUNNER_TEMP/firmware.img"
           sgdisk -p "$RUNNER_TEMP/firmware.img"
+          echo "=== build-info.json ==="
+          cat "$BUILD_INFO"
+          ARTIFACT_DIR="$(dirname "$BUILD_INFO")"
+          echo "=== sha256sums ==="
+          cat "$ARTIFACT_DIR/sha256sums"
+          (cd "$ARTIFACT_DIR" && sha256sum -c sha256sums)
           python3 scripts/check-image.py \
             --image "$IMAGE" \
             --manifest "$MANIFEST" \
