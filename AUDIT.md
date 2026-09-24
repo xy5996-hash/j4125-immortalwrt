@@ -514,3 +514,56 @@ Not yet performed in Phase B:
 - QEMU/UEFI smoke test
 - physical J4125-4L validation
 - firmware Release
+## Phase C Implementation Status
+
+Phase C firmware build completed successfully in GitHub Actions.
+
+Build workflow:
+
+```text
+Workflow: Build firmware
+Run ID: 36018087071
+Head commit: 9abd74d24dda250e04a18da75627ad30100d7ada
+Result: success
+Duration: about 1 hour 30 minutes
+Artifact: immortalwrt-j4125-2
+Artifact size: 63,411,215 bytes
+```
+
+Firmware provenance:
+
+```text
+Image: immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+Image SHA256: 62169a96e8bb4645e57743bc4c8d32ac1ced0328b59a00e0b73a05fa042a0772
+Manifest: immortalwrt-x86-64.manifest
+Manifest SHA256: 38b31f50975319a64215815cf3ee791d030bbdea646dd6c1a1ce6b95ca679302
+Final config SHA256: afec626b0ab3a647741c5532448b97904f4e6ee484e6871642063050fd6190ae
+ImmortalWrt commit: 4fc16f2985a358bd43bb522e43f05395fcbd6ed5
+packages feed commit: 84bd86384928955b568988ca0e09e2c78c75173d
+luci feed commit: d6167ea0645cbd1327708d85f94824f42d0eb872
+routing feed commit: e49d76035aafb85ddc993b59271d8c7ba56b5362
+iStore commit: 3fca15b30aeed9ecacb3efc8b4a8b9c2584ad5c7
+OpenClash commit: c3a33c1d3407956fdf8f0e0b7c1a4c52e6ad9593
+mihomo: v1.19.31
+mihomo SHA256: 04cf9f09671704f839ddbee2e93069dc831a4123a75281e725d1d96ab9ac1afc
+```
+
+Image checks passed:
+
+- gzip integrity
+- GPT/EFI boot structure
+- kernel file present
+- squashfs rootfs present
+- required packages present in manifest
+- forbidden packages absent
+- SHA256 checksums valid
+- build-info.json present and valid
+
+A separate artifact verification run also passed:
+
+```text
+Run ID: 36030236175
+Result: success
+```
+
+Phase C did not create or modify a GitHub Release.
