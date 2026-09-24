@@ -107,6 +107,8 @@ def main() -> int:
     parser.add_argument("--config", type=Path, default=DEFAULT_YAML)
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--source-dir", type=Path)
+    parser.add_argument("--build", action="store_true")
+    parser.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
 
     try:
@@ -200,6 +202,80 @@ def main() -> int:
             "defconfig_diff_lines": len(diff_lines),
             "validation": results,
         }
+        if args.build:
+            jobs = max(1, args.jobs)
+            run_logged(["make", f"-j{jobs}", "download", "V=s"], source_dir, logs_dir / "download.log")
+            run_logged(["make", f"-j{jobs}", "V=s"], source_dir, logs_dir / "build.log")
+
+            target_dir = source_dir / "bin" / "targets" / "x86" / "64"
+            images = sorted(target_dir.glob("*-squashfs-combined-efi.img.gz"))
+            manifests = sorted(target_dir.glob("*.manifest"))
+            if len(images) != 1:
+                raise RuntimeError(f"expected one combined EFI image, found: {[p.name for p in images]}")
+            if len(manifests) != 1:
+                raise RuntimeError(f"expected one manifest, found: {[p.name for p in manifests]}")
+
+            image_out = output_dir / images[0].name
+            manifest_out = output_dir / manifests[0].name
+            shutil.copyfile(images[0], image_out)
+            shutil.copyfile(manifests[0], manifest_out)
+
+            source_commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
+            ).strip()
+            build_info_path = output_dir / "build-info.json"
+            run_logged(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "scripts" / "make-build-info.py"),
+                    "--config",
+                    str(args.config.resolve()),
+                    "--source-commit",
+                    source_commit,
+                    "--final-config",
+                    str(after),
+                    "--image",
+                    str(image_out),
+                    "--manifest",
+                    str(manifest_out),
+                    "--output",
+                    str(build_info_path),
+                ],
+                REPO_ROOT,
+                logs_dir / "build-info.log",
+            )
+            run_logged(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "scripts" / "check-image.py"),
+                    "--image",
+                    str(image_out),
+                    "--manifest",
+                    str(manifest_out),
+                    "--profile",
+                    str(args.config.resolve()),
+                    "--build-info",
+                    str(build_info_path),
+                ],
+                REPO_ROOT,
+                logs_dir / "image-check.log",
+            )
+
+            checksum_entries = [image_out, manifest_out, build_info_path, after]
+            checksum_path = output_dir / "sha256sums"
+            checksum_path.write_text(
+                "".join(f"{sha256_file(path)}  {path.name}\n" for path in checksum_entries),
+                encoding="utf-8",
+            )
+            summary["build"] = {
+                "image": image_out.name,
+                "image_sha256": sha256_file(image_out),
+                "manifest": manifest_out.name,
+                "manifest_sha256": sha256_file(manifest_out),
+                "build_info": build_info_path.name,
+                "sha256sums": checksum_path.name,
+                "source_commit": source_commit,
+            }
         (output_dir / "foundation-summary.json").write_text(
             json.dumps(summary, indent=2) + "\n", encoding="utf-8"
         )
