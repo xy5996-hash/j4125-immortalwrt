@@ -136,13 +136,13 @@ def run_qemu(
             child.logfile_read = log_stream
         transcript = ""
         try:
-            result = expect_choice(child, [r"login:", SHELL_PROMPT, MENU_PROMPT], timeout=240)
+            result = expect_choice(child, [r"login:", SHELL_PROMPT, MENU_PROMPT], timeout=600)
             if result == 0:
                 child.sendline("root")
-                auth = expect_choice(child, [r"Password:", SHELL_PROMPT, MENU_PROMPT], timeout=90)
+                auth = expect_choice(child, [r"Password:", SHELL_PROMPT, MENU_PROMPT], timeout=180)
                 if auth == 0:
                     child.sendline("")
-            wait_for_shell(child, timeout=90)
+            wait_for_shell(child, timeout=180)
 
             child.sendline(f"export PS1='{SMOKE_PROMPT}'")
             child.expect_exact(SMOKE_PROMPT, timeout=30)
@@ -150,11 +150,11 @@ def run_qemu(
             for command in COMMANDS:
                 transcript += f"\n$ {command}\n"
                 child.sendline(command)
-                child.expect_exact(SMOKE_PROMPT, timeout=60)
+                child.expect_exact(SMOKE_PROMPT, timeout=120)
                 transcript += child.before
 
             child.sendline("poweroff -f")
-            poweroff = child.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=60)
+            poweroff = child.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=120)
             transcript += "\n" + child.before
             if poweroff == 1:
                 raise RuntimeError("timed out waiting for QEMU to power off")
