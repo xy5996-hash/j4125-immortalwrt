@@ -6,13 +6,17 @@ from __future__ import annotations
 import argparse
 import gzip
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import TextIO
 
 import pexpect
+
+SHELL_PROMPT = r"root@[^#\r\n]*# "
+MENU_PROMPT = r"Enter number[^\r\n]*:"
+SMOKE_PROMPT = "__SMOKE__# "
 
 COMMANDS = [
     "uname -m",
@@ -50,18 +54,45 @@ def decompress_image(image: Path, raw_image: Path) -> None:
         shutil.copyfileobj(source, destination, length=1024 * 1024)
 
 
+def expect_choice(child: pexpect.spawn, patterns: list[str], timeout: int) -> int:
+    """Return a real pattern index, or fail clearly on EOF/timeout."""
+    result = child.expect([*patterns, pexpect.EOF, pexpect.TIMEOUT], timeout=timeout)
+    if result == len(patterns):
+        raise RuntimeError("QEMU exited unexpectedly")
+    if result == len(patterns) + 1:
+        raise RuntimeError("timed out waiting for guest output")
+    return result
+
+
+def wait_for_shell(child: pexpect.spawn, timeout: int) -> None:
+    """Wait for the root shell, dismissing the optional first-login shortcut menu."""
+    while True:
+        result = expect_choice(child, [SHELL_PROMPT, MENU_PROMPT], timeout)
+        if result == 0:
+            return
+        # /etc/profile runs the shortcut menu before returning to the shell.
+        # Ctrl-C aborts that sourced menu without logging the session out.
+        child.sendcontrol("c")
+        time.sleep(0.5)
+
+
 def run_qemu(
     qemu: str,
     ovmf_code: Path,
     ovmf_vars_template: Path,
     image: Path,
     timeout: int,
+    log_path: Path | None = None,
 ) -> tuple[int, str]:
+    log_stream: TextIO | None = None
+    if log_path:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_stream = log_path.open("w", encoding="utf-8", buffering=1)
+
     with tempfile.TemporaryDirectory(prefix="qemu-smoke-") as temp:
         temp_dir = Path(temp)
         raw_image = temp_dir / "firmware.img"
         ovmf_vars = temp_dir / "OVMF_VARS.fd"
-        serial_log = temp_dir / "serial.log"
         decompress_image(image, raw_image)
         shutil.copyfile(ovmf_vars_template, ovmf_vars)
 
@@ -100,45 +131,39 @@ def run_qemu(
             encoding="utf-8",
             codec_errors="replace",
             timeout=timeout,
+            logfile_read=log_stream,
         )
         transcript = ""
         try:
-            index = child.expect([r"login:", r"root@.*#", pexpect.EOF, pexpect.TIMEOUT], timeout=240)
-            if index == pexpect.EOF:
-                raise RuntimeError("QEMU exited before boot completed")
-            if index == pexpect.TIMEOUT:
-                raise RuntimeError("timed out waiting for login prompt")
-
-            if index == 0:
+            result = expect_choice(child, [r"login:", SHELL_PROMPT, MENU_PROMPT], timeout=240)
+            if result == 0:
                 child.sendline("root")
-                password_index = child.expect([r"Password:", r"root@.*#", pexpect.EOF, pexpect.TIMEOUT], timeout=60)
-                if password_index == 0:
+                auth = expect_choice(child, [r"Password:", SHELL_PROMPT, MENU_PROMPT], timeout=90)
+                if auth == 0:
                     child.sendline("")
-                elif password_index == pexpect.EOF:
-                    raise RuntimeError("QEMU exited during login")
-                elif password_index == pexpect.TIMEOUT:
-                    raise RuntimeError("timed out during login")
+            wait_for_shell(child, timeout=90)
 
-            child.sendline("export PS1='__SMOKE__# '")
-            child.expect_exact("__SMOKE__# ", timeout=30)
+            child.sendline(f"export PS1='{SMOKE_PROMPT}'")
+            child.expect_exact(SMOKE_PROMPT, timeout=30)
 
             for command in COMMANDS:
                 transcript += f"\n$ {command}\n"
                 child.sendline(command)
-                child.expect_exact("__SMOKE__# ", timeout=60)
+                child.expect_exact(SMOKE_PROMPT, timeout=60)
                 transcript += child.before
 
             child.sendline("poweroff -f")
-            child.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=60)
+            poweroff = child.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=60)
             transcript += "\n" + child.before
-            return 0, transcript
+            if poweroff == 1:
+                raise RuntimeError("timed out waiting for QEMU to power off")
+            return child.exitstatus or 0, transcript
         finally:
             transcript += child.before if child.before else ""
-            serial_log.write_text(transcript, encoding="utf-8")
             child.close(force=True)
-            if child.exitstatus not in (0, None):
-                return child.exitstatus, transcript
-    return 0, transcript
+            if log_stream:
+                log_stream.flush()
+                log_stream.close()
 
 
 def main() -> int:
@@ -165,14 +190,16 @@ def main() -> int:
             args.ovmf_vars,
             args.image,
             args.timeout,
+            args.log,
         )
     except Exception as exc:  # noqa: BLE001 - command-line validation gate
         print(f"qemu smoke failed: {exc}", file=sys.stderr)
+        if args.log and args.log.is_file():
+            lines = args.log.read_text(encoding="utf-8", errors="replace").splitlines()
+            print("--- QEMU serial tail ---", file=sys.stderr)
+            print("\n".join(lines[-120:]), file=sys.stderr)
         return 1
 
-    if args.log:
-        args.log.parent.mkdir(parents=True, exist_ok=True)
-        args.log.write_text(transcript, encoding="utf-8")
     print(transcript)
     panic_markers = ("Kernel panic", "VFS: Cannot open root device", "Attempted to kill init")
     for marker in panic_markers:
