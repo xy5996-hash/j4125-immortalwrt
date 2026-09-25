@@ -131,8 +131,9 @@ def run_qemu(
             encoding="utf-8",
             codec_errors="replace",
             timeout=timeout,
-            logfile_read=log_stream,
         )
+        if log_stream:
+            child.logfile_read = log_stream
         transcript = ""
         try:
             result = expect_choice(child, [r"login:", SHELL_PROMPT, MENU_PROMPT], timeout=240)
